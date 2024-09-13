@@ -1,0 +1,44 @@
+from transformers import AutoModelForCausalLM, AutoTokenizer
+import torch
+import warnings
+
+warnings.filterwarnings("ignore")
+
+
+model_name = "microsoft/DialoGPT-medium"
+tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side='left')
+model = AutoModelForCausalLM.from_pretrained(model_name)
+
+def chat():
+    print("Chatbot: Hello! How can I assist you today? (Type 'exit' to end the conversation)")
+
+    chat_history_ids = torch.tensor([]).long()
+
+    while True:
+        user_input = input("You: ")
+
+        if user_input.lower() == 'exit':
+            print("Chatbot: Goodbye!")
+            break
+
+
+        new_input_ids = tokenizer.encode(user_input + tokenizer.eos_token, return_tensors='pt')
+
+
+        if chat_history_ids.numel() == 0:
+            bot_input_ids = new_input_ids
+        else:
+            bot_input_ids = torch.cat([chat_history_ids, new_input_ids], dim=-1)
+
+
+        chat_history_ids = model.generate(bot_input_ids, max_length=1000, pad_token_id=tokenizer.eos_token_id)
+
+
+        response = tokenizer.decode(chat_history_ids[:, bot_input_ids.shape[-1]:][0], skip_special_tokens=True)
+
+        print(f"Chatbot: {response}")
+
+        chat_history_ids = torch.cat([chat_history_ids, chat_history_ids[:, bot_input_ids.shape[-1]:]], dim=-1)
+
+if __name__ == "__main__":
+    chat()
